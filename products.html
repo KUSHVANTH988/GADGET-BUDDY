@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Products — Static</title>
+  <style>
+    :root{
+      --accent: #0a6b58;
+      --bg-start: #f7fbf9;
+      --muted: #6b7175;
+      --card-radius: 12px;
+      --max-width: 1200px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:#0b2b2a}
+    body{background:linear-gradient(180deg,var(--bg-start),#ffffff);padding:44px 18px;display:flex;justify-content:center}
+    .wrap{width:100%;max-width:var(--max-width)}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+    header h1{margin:0;color:var(--accent);font-size:28px}
+    header p{margin:0;color:var(--muted)}
+
+    .grid{display:grid;grid-template-columns:repeat(1,1fr);gap:22px}
+    @media(min-width:640px){ .grid{grid-template-columns:repeat(2,1fr)} }
+    @media(min-width:980px){ .grid{grid-template-columns:repeat(3,1fr)} }
+
+    .card{background:#fff;border-radius:var(--card-radius);overflow:hidden;box-shadow:0 8px 20px rgba(11,43,42,0.06);cursor:pointer;transition:transform .25s,box-shadow .25s;display:flex;flex-direction:column}
+    .card:hover{transform:translateY(-6px);box-shadow:0 20px 40px rgba(11,43,42,0.08)}
+    .thumb{width:100%;height:200px;background:#0b0b0b;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .45s}
+    .card:hover .thumb img{transform:scale(1.05)}
+    .meta{padding:12px 14px}
+    .title{font-weight:700;margin:0 0 6px;font-size:16px;color:#072a26}
+    .price{font-weight:800;color:var(--accent);margin-bottom:8px}
+    .caption{font-size:13px;color:var(--muted);margin:0}
+
+    /* modal / lightbox */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(5,10,8,0.6);display:none;align-items:center;justify-content:center;z-index:9999;padding:20px}
+    .modal{background:#fff;border-radius:12px;max-width:900px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 30px 80px rgba(2,8,6,0.5);display:flex;gap:18px;padding:18px}
+    .modal-left{flex:1;min-width:320px}
+    .modal-left img{width:100%;height:100%;max-height:70vh;object-fit:contain;border-radius:8px;background:#000}
+    .modal-right{flex:1;display:flex;flex-direction:column;gap:12px}
+    .modal-title{font-size:20px;font-weight:800;color:#072a26}
+    .modal-price{font-size:18px;color:var(--accent);font-weight:800}
+    .modal-caption{color:var(--muted);line-height:1.4}
+    .modal-actions{margin-top:auto;display:flex;gap:12px}
+    .btn-visit{background:var(--accent);color:#fff;border:0;padding:10px 14px;border-radius:8px;font-weight:700;text-decoration:none}
+    .btn-close{background:#eee;border:0;padding:10px 14px;border-radius:8px;cursor:pointer}
+
+    .empty{padding:28px;border-radius:12px;background:#fff;text-align:center;color:var(--muted);box-shadow:0 8px 20px rgba(11,43,42,0.04)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Products</h1>
+        <p>Click any card to preview details. Visit the product page from the modal.</p>
+      </div>
+      <div id="count" style="align-self:center;color:var(--muted)"></div>
+    </header>
+
+    <main>
+      <div id="emptyState" class="empty" style="display:none">No products yet.</div>
+      <div id="grid" class="grid" aria-live="polite"></div>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-hidden="true">
+    <div class="modal" role="document" aria-label="Product preview">
+      <div class="modal-left">
+        <img id="modalImg" src="" alt="">
+      </div>
+      <div class="modal-right">
+        <div id="modalTitle" class="modal-title"></div>
+        <div id="modalPrice" class="modal-price"></div>
+        <div id="modalCaption" class="modal-caption"></div>
+        <div class="modal-actions">
+          <a id="modalVisit" class="btn-visit" href="#" target="_blank" rel="noopener noreferrer">Visit</a>
+          <button id="modalClose" class="btn-close">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Sample static data (replace or extend) — this replaces the PHP/MySQL logic.
+    const products = [
+      { id: 1, image: 'https://images.unsplash.com/photo-1606813903355-5a9e1b7e1b1a?q=80&w=1400&auto=format&fit=crop', title: 'Vintage Camera', price: 2499.00, caption: 'Classic film camera, great for collectors.', href: 'https://example.com/product/1' },
+      { id: 2, image: 'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?q=80&w=1400&auto=format&fit=crop', title: 'Leather Backpack', price: 3999.00, caption: 'Durable, water-resistant everyday backpack.', href: 'https://example.com/product/2' },
+      { id: 3, image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1400&auto=format&fit=crop', title: 'Wireless Headphones', price: 1899.50, caption: 'Long battery life and immersive sound.', href: '' },
+      { id: 4, image: '', title: 'Untitled product', price: null, caption: '', href: '' },
+    ];
+
+    const grid = document.getElementById('grid');
+    const emptyState = document.getElementById('emptyState');
+    const countEl = document.getElementById('count');
+
+    function formatPrice(v) {
+      if (v === null || v === undefined || v === '') return '';
+      // Indian rupee formatting
+      return Number(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function makeCard(it) {
+      const article = document.createElement('article');
+      article.className = 'card';
+      article.tabIndex = 0;
+      article.setAttribute('data-img', it.image || 'https://via.placeholder.com/800x600?text=No+Image');
+      article.setAttribute('data-title', it.title || 'Untitled product');
+      article.setAttribute('data-price', it.price !== null && it.price !== undefined ? formatPrice(it.price) : '');
+      article.setAttribute('data-caption', it.caption || '');
+      article.setAttribute('data-href', it.href || '#');
+
+      const thumb = document.createElement('div'); thumb.className = 'thumb';
+      const img = document.createElement('img');
+      img.loading = 'lazy';
+      img.src = it.image || 'https://via.placeholder.com/800x600?text=No+Image';
+      img.alt = it.title || 'Product image';
+      img.onerror = function(){ this.src = 'https://via.placeholder.com/800x600?text=No+Image'; };
+      thumb.appendChild(img);
+
+      const meta = document.createElement('div'); meta.className = 'meta';
+      const title = document.createElement('p'); title.className = 'title'; title.textContent = it.title || 'Untitled product';
+      meta.appendChild(title);
+
+      if (it.price !== null && it.price !== undefined && it.price !== ''){
+        const price = document.createElement('div'); price.className = 'price'; price.textContent = '₹ ' + formatPrice(it.price);
+        meta.appendChild(price);
+      }
+
+      if (it.caption){
+        const caption = document.createElement('p'); caption.className = 'caption'; caption.textContent = it.caption;
+        meta.appendChild(caption);
+      }
+
+      article.appendChild(thumb);
+      article.appendChild(meta);
+
+      // click / keyboard
+      article.addEventListener('click', () => openModalFromCard(article));
+      article.addEventListener('keydown', (e) => { if (e.key === 'Enter') article.click(); });
+
+      return article;
+    }
+
+    function renderGrid() {
+      grid.innerHTML = '';
+      if (!products || products.length === 0){
+        emptyState.style.display = 'block';
+        countEl.textContent = '0 products';
+        return;
+      }
+      emptyState.style.display = 'none';
+      products.forEach(p => grid.appendChild(makeCard(p)));
+      countEl.textContent = products.length + (products.length === 1 ? ' product' : ' products');
+    }
+
+    // Modal logic (same UX as original)
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const modalImg = document.getElementById('modalImg');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalPrice = document.getElementById('modalPrice');
+    const modalCaption = document.getElementById('modalCaption');
+    const modalVisit = document.getElementById('modalVisit');
+    const modalClose = document.getElementById('modalClose');
+
+    function openModal(data) {
+      modalImg.src = data.img;
+      modalImg.alt = data.title || 'Product image';
+      modalTitle.textContent = data.title || 'Untitled product';
+      modalPrice.textContent = data.price ? '₹ ' + data.price : '';
+      modalCaption.textContent = data.caption || '';
+      modalVisit.href = data.href && data.href !== '#' ? data.href : '#';
+      modalBackdrop.style.display = 'flex';
+      modalBackdrop.setAttribute('aria-hidden','false');
+      modalClose.focus();
+    }
+    function closeModal() {
+      modalBackdrop.style.display = 'none';
+      modalBackdrop.setAttribute('aria-hidden','true');
+      modalImg.src = '';
+    }
+
+    function openModalFromCard(card){
+      const data = {
+        img: card.getAttribute('data-img'),
+        title: card.getAttribute('data-title'),
+        price: card.getAttribute('data-price'),
+        caption: card.getAttribute('data-caption'),
+        href: card.getAttribute('data-href'),
+      };
+      openModal(data);
+    }
+
+    modalClose.addEventListener('click', closeModal);
+    modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+    // initial render
+    renderGrid();
+  </script>
+</body>
+</html>
